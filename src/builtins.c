@@ -850,9 +850,9 @@ JL_CALLABLE(jl_f_getfield)
         }
         int isatomic = jl_field_isatomic(st, idx);
         if (!isatomic && order != jl_memory_order_notatomic && order != jl_memory_order_unspecified)
-            jl_atomic_error("getfield non-atomic field cannot be accessed atomically");
+            jl_atomic_error("getfield: non-atomic field cannot be accessed atomically");
         if (isatomic && order == jl_memory_order_notatomic)
-            jl_atomic_error("getfield atomic field cannot be accessed non-atomically");
+            jl_atomic_error("getfield: atomic field cannot be accessed non-atomically");
         v = jl_get_nth_field_checked(v, idx);
         if (order >= jl_memory_order_acq_rel || order == jl_memory_order_acquire)
             jl_fence(); // `v` already had at least consume ordering
@@ -875,7 +875,7 @@ JL_CALLABLE(jl_f_setfield)
     if (st == jl_module_type)
         jl_error("cannot assign variables in other modules");
     if (!st->mutabl)
-        jl_errorf("setfield! immutable struct of type %s cannot be changed", jl_symbol_name(st->name->name));
+        jl_errorf("setfield!: immutable struct of type %s cannot be changed", jl_symbol_name(st->name->name));
     size_t idx;
     if (jl_is_long(args[1])) {
         idx = jl_unbox_long(args[1]) - 1;
@@ -892,8 +892,8 @@ JL_CALLABLE(jl_f_setfield)
     }
     int isatomic = !!jl_field_isatomic(st, idx);
     if (isatomic == (order == jl_memory_order_notatomic))
-        jl_atomic_error(isatomic ? "setfield! atomic field cannot be written non-atomically"
-                                 : "setfield! non-atomic field cannot be written atomically");
+        jl_atomic_error(isatomic ? "setfield!: atomic field cannot be written non-atomically"
+                                 : "setfield!: non-atomic field cannot be written atomically");
     if (order >= jl_memory_order_acq_rel || order == jl_memory_order_release)
         jl_fence(); // `st->[idx]` will be have at least relaxed ordering
     set_nth_field(st, v, idx, args[2], isatomic);

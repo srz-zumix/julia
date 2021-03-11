@@ -1725,7 +1725,7 @@ static bool emit_getfield_unknownidx(jl_codectx_t &ctx,
     bool maybeatomic = stt->name->atomicfields != NULL;
     if (strct.ispointer() && !maybeatomic) { // boxed or stack
         if (order != jl_memory_order_notatomic && order != jl_memory_order_unspecified) {
-            emit_atomic_error(ctx, "getfield non-atomic field cannot be accessed atomically");
+            emit_atomic_error(ctx, "getfield: non-atomic field cannot be accessed atomically");
             *ret = jl_cgval_t(); // unreachable
             return true;
         }
@@ -1800,11 +1800,11 @@ static jl_cgval_t emit_getfield_knownidx(jl_codectx_t &ctx, const jl_cgval_t &st
     bool isatomic = jl_field_isatomic(jt, idx);
     bool needlock = isatomic && !jl_field_isptr(jt, idx) && jl_datatype_size(jfty) > MAX_ATOMIC_SIZE;
     if (!isatomic && order != jl_memory_order_notatomic && order != jl_memory_order_unspecified) {
-        emit_atomic_error(ctx, "getfield non-atomic field cannot be accessed atomically");
+        emit_atomic_error(ctx, "getfield: non-atomic field cannot be accessed atomically");
         return jl_cgval_t(); // unreachable
     }
     if (isatomic && order == jl_memory_order_notatomic) {
-        emit_atomic_error(ctx, "getfield atomic field cannot be accessed non-atomically");
+        emit_atomic_error(ctx, "getfield: atomic field cannot be accessed non-atomically");
         return jl_cgval_t(); // unreachable
     }
     if (jfty == jl_bottom_type) {
@@ -2926,7 +2926,7 @@ static void emit_setfield(jl_codectx_t &ctx,
         }
     }
     else {
-        std::string msg = "setfield! immutable struct of type "
+        std::string msg = "setfield!: immutable struct of type "
             + std::string(jl_symbol_name(sty->name->name))
             + " cannot be changed";
         emit_error(ctx, msg);

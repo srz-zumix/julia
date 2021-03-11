@@ -1880,7 +1880,7 @@ julia> a = 1//2
 1//2
 
 julia> setfield!(a, :num, 3);
-ERROR: setfield! immutable struct of type Rational cannot be changed
+ERROR: setfield!: immutable struct of type Rational cannot be changed
 ```
 """
 setfield!
