@@ -2993,14 +2993,14 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
             emit_typecheck(ctx, inb, (jl_value_t*)jl_bool_type, "getfield");
             if (!ord.constant)
                 return false;
-            order = jl_get_atomic_order((jl_sym_t*)ord.constant);
+            order = jl_get_atomic_order((jl_sym_t*)ord.constant, true, false);
             if (inb.constant == jl_false)
                 boundscheck = jl_false;
         }
         else if (nargs == 3) {
             const jl_cgval_t &arg3 = argv[3];
             if (arg3.typ == (jl_value_t*)jl_symbol_type && arg3.constant)
-                order = jl_get_atomic_order((jl_sym_t*)arg3.constant);
+                order = jl_get_atomic_order((jl_sym_t*)arg3.constant, true, false);
             else if (arg3.constant == jl_false)
                 boundscheck = jl_false;
             else if (arg3.typ != (jl_value_t*)jl_bool_type)
@@ -3076,7 +3076,7 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
                     // as long as we know that all elements are of the same (leaf) type.
                     if (obj.ispointer()) {
                         if (order != jl_memory_order_notatomic && order != jl_memory_order_unspecified) {
-                            emit_atomic_error(ctx, "getfield non-atomic field cannot be accessed atomically");
+                            emit_atomic_error(ctx, "getfield: non-atomic field cannot be accessed atomically");
                             *ret = jl_cgval_t(); // unreachable
                             return true;
                         }
@@ -3120,7 +3120,7 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
             emit_typecheck(ctx, ord, (jl_value_t*)jl_symbol_type, "setfield!");
             if (!ord.constant)
                 return false;
-            order = jl_get_atomic_order((jl_sym_t*)ord.constant);
+            order = jl_get_atomic_order((jl_sym_t*)ord.constant, false, true);
         }
         if (order == jl_memory_order_invalid) {
             emit_atomic_error(ctx, "invalid atomic ordering");
@@ -3145,11 +3145,11 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
                     // TODO: attempt better codegen for approximate types
                     bool isboxed = jl_field_isptr(uty, idx);
                     bool isatomic = jl_field_isatomic(uty, idx);
-                    bool needlock = isatomic && jl_field_size(uty, idx) > MAX_ATOMIC_SIZE;
+                    bool needlock = isatomic && !isboxed && jl_datatype_size(jl_field_type(uty, idx)) > MAX_ATOMIC_SIZE;
                     if (isatomic == (order == jl_memory_order_notatomic)) {
                         emit_atomic_error(ctx,
-                                isatomic ? "setfield! atomic field cannot be written non-atomically"
-                                         : "setfield! non-atomic field cannot be written atomically");
+                                isatomic ? "setfield!: atomic field cannot be written non-atomically"
+                                         : "setfield!: non-atomic field cannot be written atomically");
                         *ret = jl_cgval_t();
                         return true;
                     }
@@ -3320,7 +3320,7 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
             emit_typecheck(ctx, ord, (jl_value_t*)jl_symbol_type, "isdefined");
             if (!ord.constant)
                 return false;
-            order = jl_get_atomic_order((jl_sym_t*)ord.constant);
+            order = jl_get_atomic_order((jl_sym_t*)ord.constant, true, false);
         }
         if (order == jl_memory_order_invalid) {
             emit_atomic_error(ctx, "invalid atomic ordering");
@@ -3329,7 +3329,7 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
         }
         if (fieldidx < 0 || fieldidx >= jl_datatype_nfields(stt)) {
             if (order != jl_memory_order_unspecified) {
-                emit_atomic_error(ctx, "isdefined atomic ordering cannot be specified for nonexistent field");
+                emit_atomic_error(ctx, "isdefined: atomic ordering cannot be specified for nonexistent field");
                 *ret = jl_cgval_t(); // unreachable
                 return true;
             }
@@ -3338,12 +3338,12 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
         }
         bool isatomic = jl_field_isatomic(stt, fieldidx);
         if (!isatomic && order != jl_memory_order_notatomic && order != jl_memory_order_unspecified) {
-            emit_atomic_error(ctx, "isdefined non-atomic field cannot be accessed atomically");
+            emit_atomic_error(ctx, "isdefined: non-atomic field cannot be accessed atomically");
             *ret = jl_cgval_t(); // unreachable
             return true;
         }
         if (isatomic && order == jl_memory_order_notatomic) {
-            emit_atomic_error(ctx, "isdefined atomic field cannot be accessed non-atomically");
+            emit_atomic_error(ctx, "isdefined: atomic field cannot be accessed non-atomically");
             *ret = jl_cgval_t(); // unreachable
             return true;
         }
@@ -3379,7 +3379,8 @@ static bool emit_builtin_call(jl_codectx_t &ctx, jl_cgval_t *ret, jl_value_t *f,
         else {
             *ret = mark_julia_const(jl_true);
         }
-        if (order > jl_memory_order_notatomic && ret->constant) {
+        if (order > jl_memory_order_monotonic && ret->constant) {
+            // fence instructions may only have acquire, release, acq_rel, or seq_cst ordering.
             ctx.builder.CreateFence(get_llvm_atomic_order(order));
         }
         return true;

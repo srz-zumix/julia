@@ -783,29 +783,29 @@ JL_CALLABLE(jl_f_svec)
 
 // struct operations ------------------------------------------------------------
 
-enum jl_memory_order jl_get_atomic_order(jl_sym_t *order)
+enum jl_memory_order jl_get_atomic_order(jl_sym_t *order, char loading, char storing)
 {
     if (order == none_sym)
         return jl_memory_order_notatomic;
-    if (order == unordered_sym)
+    if (order == unordered_sym && (loading || storing))
         return jl_memory_order_unordered;
-    if (order == monotonic_sym)
+    if (order == monotonic_sym && (loading || storing))
         return jl_memory_order_monotonic;
-    if (order == acquire_sym)
+    if (order == acquire_sym && loading)
         return jl_memory_order_acquire;
-    if (order == release_sym)
+    if (order == release_sym && storing)
         return jl_memory_order_release;
-    if (order == acquire_release_sym)
+    if (order == acquire_release_sym && loading && storing)
         return jl_memory_order_acq_rel;
     if (order == sequentially_consistent_sym)
         return jl_memory_order_seq_cst;
     return jl_memory_order_invalid;
 }
 
-enum jl_memory_order jl_get_atomic_order_checked(jl_sym_t *order)
+enum jl_memory_order jl_get_atomic_order_checked(jl_sym_t *order, char loading, char storing)
 {
-    enum jl_memory_order mo = jl_get_atomic_order(order);
-    if (mo < 0)
+    enum jl_memory_order mo = jl_get_atomic_order(order, loading, storing);
+    if (mo < 0) // notatomic or invalid
         jl_atomic_error("invalid atomic ordering");
     return mo;
 }
@@ -818,12 +818,12 @@ JL_CALLABLE(jl_f_getfield)
         JL_TYPECHK(getfield, symbol, args[3]);
         JL_TYPECHK(getfield, bool, args[4]);
         nargs -= 2;
-        order = jl_get_atomic_order_checked((jl_sym_t*)args[3]);
+        order = jl_get_atomic_order_checked((jl_sym_t*)args[3], 1, 0);
     }
     else if (nargs == 3) {
         if (!jl_is_bool(args[2])) {
             JL_TYPECHK(getfield, symbol, args[2]);
-            order = jl_get_atomic_order_checked((jl_sym_t*)args[2]);
+            order = jl_get_atomic_order_checked((jl_sym_t*)args[2], 1, 0);
         }
         nargs -= 1;
     }
@@ -866,7 +866,7 @@ JL_CALLABLE(jl_f_setfield)
     if (nargs == 4) {
         JL_TYPECHK(getfield, symbol, args[3]);
         nargs -= 1;
-        order = jl_get_atomic_order_checked((jl_sym_t*)args[3]);
+        order = jl_get_atomic_order_checked((jl_sym_t*)args[3], 0, 1);
     }
     JL_NARGS(setfield!, 3, 3);
     jl_value_t *v = args[0];
@@ -1002,7 +1002,7 @@ JL_CALLABLE(jl_f_isdefined)
     enum jl_memory_order order = jl_memory_order_unspecified;
     if (nargs == 3) {
         JL_TYPECHK(isdefined, symbol, args[2]);
-        order = jl_get_atomic_order_checked((jl_sym_t*)args[2]);
+        order = jl_get_atomic_order_checked((jl_sym_t*)args[2], 1, 0);
     }
     if (jl_is_module(args[0])) {
         JL_TYPECHK(isdefined, symbol, args[1]);
@@ -1017,7 +1017,7 @@ JL_CALLABLE(jl_f_isdefined)
         idx = jl_unbox_long(args[1]) - 1;
         if (idx >= jl_datatype_nfields(vt)) {
             if (order != jl_memory_order_unspecified)
-                jl_atomic_error("isdefined atomic ordering cannot be specified for nonexistent field");
+                jl_atomic_error("isdefined: atomic ordering cannot be specified for nonexistent field");
             return jl_false;
         }
     }
@@ -1026,15 +1026,15 @@ JL_CALLABLE(jl_f_isdefined)
         idx = jl_field_index(vt, (jl_sym_t*)args[1], 0);
         if ((int)idx == -1) {
             if (order != jl_memory_order_unspecified)
-                jl_atomic_error("isdefined atomic ordering cannot be specified for nonexistent field");
+                jl_atomic_error("isdefined: atomic ordering cannot be specified for nonexistent field");
             return jl_false;
         }
     }
     int isatomic = jl_field_isatomic(vt, idx);
     if (!isatomic && order != jl_memory_order_notatomic && order != jl_memory_order_unspecified)
-        jl_atomic_error("isdefined non-atomic field cannot be accessed atomically");
+        jl_atomic_error("isdefined: non-atomic field cannot be accessed atomically");
     if (isatomic && order == jl_memory_order_notatomic)
-        jl_atomic_error("isdefined atomic field cannot be accessed non-atomically");
+        jl_atomic_error("isdefined: atomic field cannot be accessed non-atomically");
     int v = jl_field_isdefined(args[0], idx);
     if (v == 2) {
         if (order > jl_memory_order_notatomic)

@@ -1334,8 +1334,8 @@ extern jl_sym_t *acquire_sym;
 extern jl_sym_t *release_sym;
 extern jl_sym_t *acquire_release_sym;
 extern jl_sym_t *sequentially_consistent_sym; // or strong_sym?
-enum jl_memory_order jl_get_atomic_order(jl_sym_t *order);
-enum jl_memory_order jl_get_atomic_order_checked(jl_sym_t *order);
+enum jl_memory_order jl_get_atomic_order(jl_sym_t *order, char loading, char storing);
+enum jl_memory_order jl_get_atomic_order_checked(jl_sym_t *order, char loading, char storing);
 
 struct _jl_sysimg_fptrs_t;
 

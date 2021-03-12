@@ -180,7 +180,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerref(jl_value_t *p, jl_value_t *order)
 {
     JL_TYPECHK(pointerref, pointer, p);
     JL_TYPECHK(pointerref, symbol, order)
-    (void)jl_get_atomic_order_checked((jl_sym_t*)order);
+    (void)jl_get_atomic_order_checked((jl_sym_t*)order, 1, 0);
     jl_value_t *ety = jl_tparam0(jl_typeof(p));
     if (ety == (jl_value_t*)jl_any_type) {
         jl_value_t **pp = (jl_value_t**)jl_unbox_long(p);
@@ -201,7 +201,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerset(jl_value_t *p, jl_value_t *x, jl_v
 {
     JL_TYPECHK(pointerset, pointer, p);
     JL_TYPECHK(pointerset, symbol, order);
-    (void)jl_get_atomic_order_checked((jl_sym_t*)order);
+    (void)jl_get_atomic_order_checked((jl_sym_t*)order, 0, 1);
     jl_value_t *ety = jl_tparam0(jl_typeof(p));
     if (ety == (jl_value_t*)jl_any_type) {
         jl_value_t **pp = (jl_value_t**)jl_unbox_long(p);
@@ -225,7 +225,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointerswap(jl_value_t *p, jl_value_t *x, jl_
 {
     JL_TYPECHK(pointerswap, pointer, p);
     JL_TYPECHK(pointerswap, symbol, order);
-    (void)jl_get_atomic_order_checked((jl_sym_t*)order);
+    (void)jl_get_atomic_order_checked((jl_sym_t*)order, 1, 1);
     jl_value_t *ety = jl_tparam0(jl_typeof(p));
     jl_value_t *y;
     if (ety == (jl_value_t*)jl_any_type) {
@@ -264,13 +264,15 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointermodify(jl_value_t *p, jl_value_t *f, j
     }
 }
 
-JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *x, jl_value_t *expected, jl_value_t *success_order, jl_value_t *failure_order)
+JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *x, jl_value_t *expected, jl_value_t *success_order_sym, jl_value_t *failure_order_sym)
 {
     JL_TYPECHK(pointercmpswap, pointer, p);
-    JL_TYPECHK(pointercmpswap, symbol, success_order);
-    JL_TYPECHK(pointercmpswap, symbol, failure_order);
-    (void)jl_get_atomic_order_checked((jl_sym_t*)success_order);
-    (void)jl_get_atomic_order_checked((jl_sym_t*)failure_order);
+    JL_TYPECHK(pointercmpswap, symbol, success_order_sym);
+    JL_TYPECHK(pointercmpswap, symbol, failure_order_sym);
+    enum jl_memory_order success_order = jl_get_atomic_order_checked((jl_sym_t*)success_order_sym, 1, 1);
+    enum jl_memory_order failure_order = jl_get_atomic_order_checked((jl_sym_t*)failure_order_sym, 1, 0);
+    if (failure_order > success_order)
+        jl_atomic_error("invalid atomic ordering");
     jl_value_t *ety = jl_tparam0(jl_typeof(p));
     int success;
     if (ety == (jl_value_t*)jl_any_type) {
@@ -307,7 +309,7 @@ JL_DLLEXPORT jl_value_t *jl_atomic_pointercmpswap(jl_value_t *p, jl_value_t *x, 
 JL_DLLEXPORT jl_value_t *jl_atomic_fence(jl_value_t *order)
 {
     JL_TYPECHK(fence, symbol, order);
-    (void)jl_get_atomic_order_checked((jl_sym_t*)order);
+    (void)jl_get_atomic_order_checked((jl_sym_t*)order, 0, 0);
     jl_fence();
     return jl_nothing;
 }

@@ -1117,15 +1117,15 @@ JL_DLLEXPORT jl_value_t *jl_get_nth_field(jl_value_t *v, size_t i)
     }
     jl_value_t *ty = jl_field_type_concrete(st, i);
     int isatomic = jl_field_isatomic(st, i);
-    size_t fsz = jl_field_size(st, i);
-    int needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
     if (jl_is_uniontype(ty)) {
+        size_t fsz = jl_field_size(st, i);
         uint8_t sel = ((uint8_t*)v)[offs + fsz - 1];
         ty = jl_nth_union_component(ty, sel);
         if (jl_is_datatype_singleton((jl_datatype_t*)ty))
             return ((jl_datatype_t*)ty)->instance;
     }
     jl_value_t *r;
+    int needlock = (isatomic && jl_datatype_size(ty) > MAX_ATOMIC_SIZE);
     if (isatomic && !needlock) {
         r = jl_atomic_new_bits(ty, (char*)v + offs);
     }
@@ -1159,7 +1159,8 @@ JL_DLLEXPORT jl_value_t *jl_get_nth_field_checked(jl_value_t *v, size_t i)
 static inline void memassign_safe(int hasptr, jl_value_t *parent, char *dst, const jl_value_t *src, size_t nb) JL_NOTSAFEPOINT
 {
     if (hasptr) {
-        assert(nb >= jl_datatype_size(jl_typeof(src))); // dst might have some undefined bits, but the src heap box should be okay with that
+        // assert that although dst might have some undefined bits, the src heap box should be okay with that
+        assert(LLT_ALIGN(nb, sizeof(void*)) == LLT_ALIGN(jl_datatype_size(jl_typeof(src)), sizeof(void*)));
         size_t nptr = nb / sizeof(void*);
         memmove_refs((void**)dst, (void**)src, nptr);
         jl_gc_multi_wb(parent, src);
@@ -1194,10 +1195,10 @@ void set_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *rhs, 
     }
     else {
         jl_value_t *ty = jl_field_type_concrete(st, i);
+        jl_value_t *rty = jl_typeof(rhs);
         size_t fsz = jl_field_size(st, i);
         int hasptr;
         if (jl_is_uniontype(ty)) {
-            jl_value_t *rty = jl_typeof(rhs);
             uint8_t *psel = &((uint8_t*)v)[offs + fsz - 1];
             unsigned nth = 0;
             if (!jl_find_union_component(ty, rty, &nth))
@@ -1206,13 +1207,11 @@ void set_nth_field(jl_datatype_t *st, jl_value_t *v, size_t i, jl_value_t *rhs, 
             if (jl_is_datatype_singleton((jl_datatype_t*)rty))
                 return;
             hasptr = 0;
-            fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the copy
         }
         else {
             hasptr = ((jl_datatype_t*)ty)->layout->npointers > 0;
-            // should be safe enough to read fsz bytes from rhs
-            // due to gc alignment considerations
         }
+        fsz = jl_datatype_size((jl_datatype_t*)rty); // need to shrink-wrap the final copy
         int needlock = (isatomic && fsz > MAX_ATOMIC_SIZE);
         if (isatomic && !needlock) {
             jl_atomic_store_bits((char*)v + offs, rhs, fsz);

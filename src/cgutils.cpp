@@ -1798,7 +1798,7 @@ static jl_cgval_t emit_getfield_knownidx(jl_codectx_t &ctx, const jl_cgval_t &st
 {
     jl_value_t *jfty = jl_field_type(jt, idx);
     bool isatomic = jl_field_isatomic(jt, idx);
-    bool needlock = isatomic && jl_field_size(jt, idx) > MAX_ATOMIC_SIZE;
+    bool needlock = isatomic && !jl_field_isptr(jt, idx) && jl_datatype_size(jfty) > MAX_ATOMIC_SIZE;
     if (!isatomic && order != jl_memory_order_notatomic && order != jl_memory_order_unspecified) {
         emit_atomic_error(ctx, "getfield non-atomic field cannot be accessed atomically");
         return jl_cgval_t(); // unreachable
