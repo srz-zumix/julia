@@ -8026,6 +8026,7 @@ extern "C" void jl_init_llvm(void)
     #endif
 
     init_julia_llvm_meta();
+    jl_printf(JL_STDERR, "init_julia_llvm_meta\n");
     jl_ExecutionEngine = new JuliaOJIT(*jl_TargetMachine, &jl_LLVMContext);
 
     jl_printf(JL_STDERR, "jl_ExecutionEngine\n");
