@@ -213,17 +213,17 @@ static jl_mutex_t shared_map_lock;
 
 static rlim_t get_resource_limit(int resource)
 {
-    rlim_t def = static_cast<rlim_t>(map_size_inc)
+    rlim_t def_size = static_cast<rlim_t>(map_size_inc)
     rlimit rl;
     if( getrlimit(resource, &rl) != -1 ) {
         if( rl.rlim_cur != RLIM_INFINITY ) {
-            return std::min(def, rl.rlim_cur)
+            return std::min(def_size, rl.rlim_cur);
         }
         if( rl.rlim_max != RLIM_INFINITY ) {
-            return std::min(def, rl.rlim_max)
+            return std::min(def_size, rl.rlim_max);
         }
     }
-    return def;
+    return def_size;
 }
 
 static void *create_shared_map(size_t size, size_t id)
