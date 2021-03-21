@@ -8026,6 +8026,9 @@ extern "C" void jl_init_llvm(void)
     init_julia_llvm_meta();
     jl_ExecutionEngine = new JuliaOJIT(*jl_TargetMachine, &jl_LLVMContext);
 
+    jl_printf(JL_STDERR, "jl_ExecutionEngine\n");
+
+
     // Mark our address spaces as non-integral
     jl_data_layout = jl_ExecutionEngine->getDataLayout();
     std::string DL = jl_data_layout.getStringRepresentation() + "-ni:10:11:12:13";
