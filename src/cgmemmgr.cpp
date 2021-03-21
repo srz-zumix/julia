@@ -207,23 +207,22 @@ static intptr_t get_anon_hdl(void)
 static size_t map_offset = 0;
 // Multiple of 128MB.
 // Hopefully no one will set a ulimit for this to be a problem...
-static constexpr size_t map_size_inc = 128 * 1024 * 1024;
+static constexpr size_t map_size_inc_default = 128 * 1024 * 1024;
 static size_t map_size = 0;
 static jl_mutex_t shared_map_lock;
 
-static rlim_t get_resource_limit(int resource)
+static size_t get_map_size_inc()
 {
-    rlim_t def_size = static_cast<rlim_t>(map_size_inc);
     rlimit rl;
-    if( getrlimit(resource, &rl) != -1 ) {
+    if( getrlimit(RLIMIT_FSIZE, &rl) != -1 ) {
         if( rl.rlim_cur != RLIM_INFINITY ) {
-            return std::min(def_size, rl.rlim_cur);
+            return std::min<size_t>(map_size_inc_default, rl.rlim_cur);
         }
         if( rl.rlim_max != RLIM_INFINITY ) {
-            return std::min(def_size, rl.rlim_max);
+            return std::min<size_t>(map_size_inc_default, rl.rlim_max);
         }
     }
-    return def_size;
+    return map_size_inc_default;
 }
 
 static void *create_shared_map(size_t size, size_t id)
@@ -241,7 +240,7 @@ static intptr_t init_shared_map()
         return -1;
     jl_printf(JL_STDERR, "ftruncate\n");
     map_offset = 0;
-    map_size = get_resource_limit(RLIMIT_FSIZE);
+    map_size = get_map_size_inc();
     int ret = ftruncate(anon_hdl, map_size);
     if (ret != 0) {
         perror(__func__);
@@ -255,6 +254,7 @@ static void *alloc_shared_page(size_t size, size_t *id, bool exec)
     assert(size % jl_page_size == 0);
     size_t off = jl_atomic_fetch_add(&map_offset, size);
     *id = off;
+    map_size_inc = get_map_size_inc();
     if (__unlikely(off + size > map_size)) {
         JL_LOCK_NOGC(&shared_map_lock);
         size_t old_size = map_size;
