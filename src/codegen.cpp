@@ -7889,6 +7889,8 @@ static void init_jit_functions(void)
 
 extern "C" void jl_init_llvm(void)
 {
+    jl_printf(JL_STDERR, "jl_init_llvm\n");
+
     jl_page_size = jl_getpagesize();
     imaging_mode = jl_options.image_codegen || (jl_generating_output() && !jl_options.incremental);
     jl_default_cgparams.generic_context = jl_nothing;
