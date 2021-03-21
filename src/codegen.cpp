@@ -7889,8 +7889,6 @@ static void init_jit_functions(void)
 
 extern "C" void jl_init_llvm(void)
 {
-    jl_printf(JL_STDERR, "jl_init_llvm\n");
-
     jl_page_size = jl_getpagesize();
     imaging_mode = jl_options.image_codegen || (jl_generating_output() && !jl_options.incremental);
     jl_default_cgparams.generic_context = jl_nothing;
@@ -8026,11 +8024,7 @@ extern "C" void jl_init_llvm(void)
     #endif
 
     init_julia_llvm_meta();
-    jl_printf(JL_STDERR, "init_julia_llvm_meta\n");
     jl_ExecutionEngine = new JuliaOJIT(*jl_TargetMachine, &jl_LLVMContext);
-
-    jl_printf(JL_STDERR, "jl_ExecutionEngine\n");
-
 
     // Mark our address spaces as non-integral
     jl_data_layout = jl_ExecutionEngine->getDataLayout();

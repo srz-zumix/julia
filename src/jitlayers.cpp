@@ -666,8 +666,6 @@ JuliaOJIT::JuliaOJIT(TargetMachine &TM, LLVMContext *LLVMCtx)
         ),
     CompileLayer(ES, ObjectLayer, std::make_unique<CompilerT>(this))
 {
-    jl_printf(JL_STDERR, "JuliaOJIT::JuliaOJIT\n");
-    
 #if JL_LLVM_VERSION >= 120000
     ObjectLayer.setNotifyLoaded(
         [this](orc::MaterializationResponsibility &MR,
@@ -693,8 +691,6 @@ JuliaOJIT::JuliaOJIT(TargetMachine &TM, LLVMContext *LLVMCtx)
     addPassesForOptLevel(PM2, *TMs[2], ObjStream, Ctx, 2);
     addPassesForOptLevel(PM3, *TMs[3], ObjStream, Ctx, 3);
 
-    jl_printf(JL_STDERR, "addPassesForOptLevel\n");
-
     // Make sure SectionMemoryManager::getSymbolAddressInProcess can resolve
     // symbols in the program as well. The nullptr argument to the function
     // tells DynamicLibrary to load the program, not a library.
@@ -702,13 +698,9 @@ JuliaOJIT::JuliaOJIT(TargetMachine &TM, LLVMContext *LLVMCtx)
     if (sys::DynamicLibrary::LoadLibraryPermanently(nullptr, &ErrorStr))
         report_fatal_error("FATAL: unable to dlopen self\n" + ErrorStr);
 
-    jl_printf(JL_STDERR, "LoadLibraryPermanently\n");
-
     GlobalJD.addGenerator(
       cantFail(orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
         DL.getGlobalPrefix())));
-
-    jl_printf(JL_STDERR, "addGenerator\n");
 
     // Resolve non-lock free atomic functions in the libatomic1 library.
     // This is the library that provides support for c11/c++11 atomic operations.
@@ -732,11 +724,9 @@ JuliaOJIT::JuliaOJIT(TargetMachine &TM, LLVMContext *LLVMCtx)
                         return (*S).startswith(atomic_prefix);
                   })));
         }
-        jl_printf(JL_STDERR, "libatomic\n");
     }
 
     JD.addToLinkOrder(GlobalJD, orc::JITDylibLookupFlags::MatchExportedSymbolsOnly);
-    jl_printf(JL_STDERR, "addToLinkOrder\n");
 }
 
 void JuliaOJIT::addGlobalMapping(StringRef Name, uint64_t Addr)

@@ -238,7 +238,6 @@ static intptr_t init_shared_map()
     anon_hdl = get_anon_hdl();
     if (anon_hdl == -1)
         return -1;
-    jl_printf(JL_STDERR, "ftruncate\n");
     map_offset = 0;
     map_size = get_map_size_inc();
     int ret = ftruncate(anon_hdl, map_size);
@@ -254,7 +253,7 @@ static void *alloc_shared_page(size_t size, size_t *id, bool exec)
     assert(size % jl_page_size == 0);
     size_t off = jl_atomic_fetch_add(&map_offset, size);
     *id = off;
-    map_size_inc = get_map_size_inc();
+    size_t map_size_inc = get_map_size_inc();
     if (__unlikely(off + size > map_size)) {
         JL_LOCK_NOGC(&shared_map_lock);
         size_t old_size = map_size;
@@ -768,16 +767,12 @@ public:
           total_allocated(0)
     {
 #ifdef _OS_LINUX_
-        jl_printf(JL_STDERR, "get_self_mem_fd\n");
         if (!ro_alloc && get_self_mem_fd() != -1) {
-            jl_printf(JL_STDERR, "SelfMemAllocator\n");
             ro_alloc.reset(new SelfMemAllocator<false>());
             exe_alloc.reset(new SelfMemAllocator<true>());
         }
 #endif
-        jl_printf(JL_STDERR, "init_shared_map\n");
         if (!ro_alloc && init_shared_map() != -1) {
-            jl_printf(JL_STDERR, "DualMapAllocator\n");
             ro_alloc.reset(new DualMapAllocator<false>());
             exe_alloc.reset(new DualMapAllocator<true>());
         }
@@ -937,9 +932,7 @@ void *lookupWriteAddressFor(RTDyldMemoryManager *memmgr, void *rt_addr)
 
 RTDyldMemoryManager* createRTDyldMemoryManager()
 {
-    jl_printf(JL_STDERR, "createRTDyldMemoryManager\n");
     RTDyldMemoryManager* p = new RTDyldMemoryManagerJL();
-    jl_printf(JL_STDERR, "createRTDyldMemoryManager\n");
     return p;
 }
 
