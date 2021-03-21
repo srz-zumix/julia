@@ -210,6 +210,21 @@ static constexpr size_t map_size_inc = 128 * 1024 * 1024;
 static size_t map_size = 0;
 static jl_mutex_t shared_map_lock;
 
+static rlim_t get_resource_limit(int resource)
+{
+    rlim_t def = static_cast<rlim_t>(map_size_inc)
+    rlimit rl;
+    if( getrlimit(resource, &rl) != -1 ) {
+        if( rl.rlim_cur != RLIM_INFINITY ) {
+            return std::min(def, rl.rlim_cur)
+        }
+        if( rl.rlim_max != RLIM_INFINITY ) {
+            return std::min(def, rl.rlim_max)
+        }
+    }
+    return def;
+}
+
 static void *create_shared_map(size_t size, size_t id)
 {
     void *addr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -223,8 +238,9 @@ static intptr_t init_shared_map()
     anon_hdl = get_anon_hdl();
     if (anon_hdl == -1)
         return -1;
+    jl_printf(JL_STDERR, "ftruncate\n");
     map_offset = 0;
-    map_size = map_size_inc;
+    map_size = get_resource_limit(RLIMIT_FSIZE);
     int ret = ftruncate(anon_hdl, map_size);
     if (ret != 0) {
         perror(__func__);
