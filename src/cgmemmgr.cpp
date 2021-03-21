@@ -917,7 +917,7 @@ void *lookupWriteAddressFor(RTDyldMemoryManager *memmgr, void *rt_addr)
 RTDyldMemoryManager* createRTDyldMemoryManager()
 {
     jl_printf(JL_STDERR, "createRTDyldMemoryManager\n");
-    RTDyldMemoryManager p = new RTDyldMemoryManagerJL();
+    RTDyldMemoryManager* p = new RTDyldMemoryManagerJL();
     jl_printf(JL_STDERR, "createRTDyldMemoryManager\n");
     return p;
 }
