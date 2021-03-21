@@ -7,7 +7,7 @@
 #include "julia.h"
 #include "julia_internal.h"
 
-#ifdef _OS_LINUX_
+#ifdef _OS_LINUX_TEST_
 #  include <sys/syscall.h>
 #  include <sys/utsname.h>
 #endif
@@ -256,7 +256,7 @@ static void *alloc_shared_page(size_t size, size_t *id, bool exec)
 }
 #endif // _OS_WINDOWS_
 
-#ifdef _OS_LINUX_
+#ifdef _OS_LINUX_TEST_
 // Using `/proc/self/mem`, A.K.A. Keno's remote memory manager.
 
 ssize_t pwrite_addr(int fd, const void *buf, size_t nbyte, uintptr_t addr)
@@ -646,7 +646,7 @@ public:
     }
 };
 
-#ifdef _OS_LINUX_
+#ifdef _OS_LINUX_TEST_
 template<bool exec>
 class SelfMemAllocator : public ROAllocator<exec> {
     SmallVector<Block, 16> temp_buff;
@@ -750,7 +750,7 @@ public:
           code_allocated(false),
           total_allocated(0)
     {
-#ifdef _OS_LINUX_
+#ifdef _OS_LINUX_TEST_
         if (!ro_alloc && get_self_mem_fd() != -1) {
             ro_alloc.reset(new SelfMemAllocator<false>());
             exe_alloc.reset(new SelfMemAllocator<true>());
