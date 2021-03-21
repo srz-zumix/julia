@@ -10,6 +10,7 @@
 #ifdef _OS_LINUX_
 #  include <sys/syscall.h>
 #  include <sys/utsname.h>
+#  include <sys/resource.h>
 #endif
 #ifndef _OS_WINDOWS_
 #  include <sys/mman.h>
