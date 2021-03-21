@@ -213,7 +213,7 @@ static jl_mutex_t shared_map_lock;
 
 static rlim_t get_resource_limit(int resource)
 {
-    rlim_t def_size = static_cast<rlim_t>(map_size_inc)
+    rlim_t def_size = static_cast<rlim_t>(map_size_inc);
     rlimit rl;
     if( getrlimit(resource, &rl) != -1 ) {
         if( rl.rlim_cur != RLIM_INFINITY ) {
