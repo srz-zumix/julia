@@ -163,8 +163,10 @@ static intptr_t get_anon_hdl(void)
     // file system.
 #  ifdef __NR_memfd_create
     fd = syscall(__NR_memfd_create, "julia-codegen", 0);
-    if (check_fd_or_close(fd))
+    if (check_fd_or_close(fd)) {
+        jl_printf(JL_STDERR, "__NR_memfd_create\n");
         return fd;
+    }
 #  endif
 #  ifdef _OS_FREEBSD_
     fd = shm_open(SHM_ANON, O_RDWR, S_IRWXU);
