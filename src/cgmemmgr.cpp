@@ -223,6 +223,8 @@ static intptr_t init_shared_map()
     anon_hdl = get_anon_hdl();
     if (anon_hdl == -1)
         return -1;
+
+    jl_printf(JL_STDERR, "init_shared_map\n");
     map_offset = 0;
     map_size = map_size_inc;
     int ret = ftruncate(anon_hdl, map_size);
