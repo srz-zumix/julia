@@ -190,6 +190,7 @@ static intptr_t get_anon_hdl(void)
         fd = dup(fileno(tmpf));
         fclose(tmpf);
         if (check_fd_or_close(fd)) {
+            jl_printf(JL_STDERR, "tmpfile\n");
             return fd;
         }
     }
@@ -197,6 +198,7 @@ static intptr_t get_anon_hdl(void)
              "/tmp/julia-codegen-%d-XXXXXX", (int)pid);
     fd = mkstemp(shm_name);
     if (check_fd_or_close(fd)) {
+        jl_printf(JL_STDERR, "mkstemp\n");
         unlink(shm_name);
         return fd;
     }
